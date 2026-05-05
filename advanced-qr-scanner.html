@@ -671,4 +671,463 @@
                     const output = new ImageData(width, height);
                     const outData = output.data;
 
-                    const kernel = [1/9, 1/
+                    const kernel = [1/9, 1/9, 1/9, 1/9, 1/9, 1/9, 1/9, 1/9, 1/9];
+
+                    for (let y = 1; y < height - 1; y++) {
+                        for (let x = 1; x < width - 1; x++) {
+                            let r = 0, g = 0, b = 0;
+
+                            for (let ky = -1; ky <= 1; ky++) {
+                                for (let kx = -1; kx <= 1; kx++) {
+                                    const idx = ((y + ky) * width + (x + kx)) * 4;
+                                    const kernelIdx = (ky + 1) * 3 + (kx + 1);
+                                    r += data[idx] * kernel[kernelIdx];
+                                    g += data[idx + 1] * kernel[kernelIdx];
+                                    b += data[idx + 2] * kernel[kernelIdx];
+                                }
+                            }
+
+                            const outIdx = (y * width + x) * 4;
+                            outData[outIdx] = r;
+                            outData[outIdx + 1] = g;
+                            outData[outIdx + 2] = b;
+                            outData[outIdx + 3] = 255;
+                        }
+                    }
+                    return output;
+                },
+
+                /**
+                 * Mengkonversi gambar ke grayscale untuk processing lebih cepat
+                 */
+                toGrayscale: (imageData) => {
+                    const data = imageData.data;
+                    for (let i = 0; i < data.length; i += 4) {
+                        const gray = data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114;
+                        data[i] = gray;
+                        data[i + 1] = gray;
+                        data[i + 2] = gray;
+                    }
+                    return imageData;
+                },
+
+                /**
+                 * Adaptive thresholding untuk berbagai kondisi pencahayaan
+                 */
+                adaptiveThreshold: (imageData, blockSize = 11) => {
+                    const width = imageData.width;
+                    const height = imageData.height;
+                    const data = imageData.data;
+                    const output = new Uint8ClampedArray(width * height);
+
+                    const half = Math.floor(blockSize / 2);
+
+                    for (let y = 0; y < height; y++) {
+                        for (let x = 0; x < width; x++) {
+                            let sum = 0;
+                            let count = 0;
+
+                            for (let by = -half; by <= half; by++) {
+                                for (let bx = -half; bx <= half; bx++) {
+                                    const yy = Math.max(0, Math.min(height - 1, y + by));
+                                    const xx = Math.max(0, Math.min(width - 1, x + bx));
+                                    const idx = (yy * width + xx) * 4;
+                                    sum += data[idx];
+                                    count++;
+                                }
+                            }
+
+                            const mean = sum / count;
+                            const currentIdx = (y * width + x) * 4;
+                            output[y * width + x] = data[currentIdx] > mean ? 255 : 0;
+                        }
+                    }
+
+                    return output;
+                }
+            };
+
+            // ============ QR Detection Engine ============
+            const detectionEngine = {
+                /**
+                 * Memproses frame dengan preprocessing otomatis
+                 */
+                processFrame: (video) => {
+                    if (state.processingFrame) return null;
+
+                    state.processingFrame = true;
+                    const sensitivity = config.getSensitivity();
+
+                    try {
+                        // Ekstraksi frame
+                        let imageData = imageProcessor.extractFrame(video, dom.canvas);
+
+                        // Konversi ke grayscale
+                        imageData = imageProcessor.toGrayscale(imageData);
+
+                        // Blur untuk noise reduction
+                        imageData = imageProcessor.gaussianBlur(imageData, 1);
+
+                        // Peningkatan kontras berdasarkan sensitivitas
+                        const contrastFactor = 1 + (sensitivity / 100) * 0.5;
+                        imageData = imageProcessor.enhanceContrast(imageData, contrastFactor);
+
+                        // Deteksi QR Code
+                        const code = jsQR(imageData.data, imageData.width, imageData.height);
+
+                        state.processingFrame = false;
+                        return code;
+                    } catch (e) {
+                        console.error('Frame processing error:', e);
+                        state.processingFrame = false;
+                        return null;
+                    }
+                },
+
+                /**
+                 * Validasi deteksi dengan history untuk akurasi lebih tinggi
+                 */
+                validateDetection: (code) => {
+                    if (!code || !code.data) return false;
+
+                    // Simpan deteksi dalam history
+                    state.detectionHistory.push(code.data);
+                    if (state.detectionHistory.length > 10) {
+                        state.detectionHistory.shift();
+                    }
+
+                    // Jika setidaknya 3 deteksi terakhir sama, validasi
+                    if (state.detectionHistory.length >= 3) {
+                        const lastThree = state.detectionHistory.slice(-3);
+                        return lastThree[0] === lastThree[1] && lastThree[1] === lastThree[2];
+                    }
+
+                    return false;
+                }
+            };
+
+            // ============ Data Type Detection ============
+            const dataTypeDetector = {
+                /**
+                 * Mendeteksi jenis data dari hasil QR scan
+                 */
+                detect: (data) => {
+                    if (!data) return 'Unknown';
+
+                    // Check URL
+                    if (this.isUrl(data)) return 'URL';
+
+                    // Check Email
+                    if (this.isEmail(data)) return 'Email';
+
+                    // Check Phone
+                    if (this.isPhoneNumber(data)) return 'Nomor Telepon';
+
+                    // Check WiFi
+                    if (data.includes('WIFI:')) return 'WiFi';
+
+                    // Check vCard
+                    if (data.includes('BEGIN:VCARD')) return 'Kontak vCard';
+
+                    // Check Location
+                    if (data.includes('geo:')) return 'Lokasi';
+
+                    return 'Teks Biasa';
+                },
+
+                isUrl: (data) => {
+                    try {
+                        new URL(data);
+                        return true;
+                    } catch {
+                        return false;
+                    }
+                },
+
+                isEmail: (data) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data),
+
+                isPhoneNumber: (data) => /^[\d\s\-\+\(\)]{7,}$/.test(data)
+            };
+
+            // ============ User Notifications ============
+            const notifications = {
+                /**
+                 * Mainkan suara notifikasi
+                 */
+                playSound: () => {
+                    if (!config.getEnableSound()) return;
+
+                    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    const oscillator = audioContext.createOscillator();
+                    const gainNode = audioContext.createGain();
+
+                    oscillator.connect(gainNode);
+                    gainNode.connect(audioContext.destination);
+
+                    oscillator.frequency.value = 800;
+                    oscillator.type = 'sine';
+
+                    gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
+
+                    oscillator.start(audioContext.currentTime);
+                    oscillator.stop(audioContext.currentTime + 0.1);
+                },
+
+                /**
+                 * Update status indicator
+                 */
+                updateStatus: (text, type = 'success') => {
+                    dom.statusText.textContent = text;
+                    dom.statusIndicator.className = `status-indicator ${type}`;
+                },
+
+                /**
+                 * Show loading state
+                 */
+                showLoading: () => {
+                    dom.loadingSpinner.classList.add('active');
+                },
+
+                /**
+                 * Hide loading state
+                 */
+                hideLoading: () => {
+                    dom.loadingSpinner.classList.remove('active');
+                }
+            };
+
+            // ============ Public API ============
+            return {
+                /**
+                 * Memulai pemindaian QR Code
+                 */
+                start: async () => {
+                    if (state.isScanning) return;
+
+                    notifications.updateStatus('Mengakses kamera...', 'warning');
+                    notifications.showLoading();
+
+                    try {
+                        const stream = await navigator.mediaDevices.getUserMedia({
+                            video: {
+                                facingMode: 'environment',
+                                width: { ideal: 1280 },
+                                height: { ideal: 720 }
+                            }
+                        });
+
+                        state.videoStream = stream;
+                        dom.video.srcObject = stream;
+                        dom.video.classList.add('active');
+
+                        state.isScanning = true;
+                        dom.startBtn.style.display = 'none';
+                        dom.stopBtn.style.display = 'flex';
+
+                        notifications.updateStatus('Pemindaian aktif - Arahkan kamera ke QR Code', 'success');
+                        notifications.hideLoading();
+
+                        this.scanFrame();
+                    } catch (error) {
+                        notifications.updateStatus('Akses kamera ditolak', 'error');
+                        notifications.hideLoading();
+                        console.error('Camera access error:', error);
+                    }
+                },
+
+                /**
+                 * Menghentikan pemindaian
+                 */
+                stop: () => {
+                    state.isScanning = false;
+
+                    if (state.videoStream) {
+                        state.videoStream.getTracks().forEach(track => track.stop());
+                        state.videoStream = null;
+                    }
+
+                    dom.video.classList.remove('active');
+                    dom.startBtn.style.display = 'flex';
+                    dom.stopBtn.style.display = 'none';
+
+                    notifications.updateStatus('Pemindaian dihentikan', 'warning');
+                },
+
+                /**
+                 * Scan frame video secara kontinyu
+                 */
+                scanFrame: () => {
+                    if (!state.isScanning) return;
+
+                    state.frameCount++;
+                    const processingInterval = config.getProcessingInterval();
+
+                    // Process every N frames based on speed setting
+                    if (state.frameCount % processingInterval === 0) {
+                        const code = detectionEngine.processFrame(dom.video);
+
+                        if (code && detectionEngine.validateDetection(code)) {
+                            if (code.data !== state.lastScannedCode) {
+                                state.lastScannedCode = code.data;
+                                this.handleDetection(code.data);
+                            }
+                        }
+                    }
+
+                    requestAnimationFrame(() => this.scanFrame());
+                },
+
+                /**
+                 * Handle hasil deteksi QR Code
+                 */
+                handleDetection: (data) => {
+                    notifications.playSound();
+                    notifications.updateStatus('QR Code terdeteksi!', 'success');
+
+                    dom.resultValue.textContent = data;
+                    const type = dataTypeDetector.detect(data);
+                    dom.dataType.textContent = type;
+
+                    dom.resultSection.classList.add('active');
+
+                    // Auto redirect jika URL dan setting enabled
+                    if (type === 'URL' && config.getAutoRedirect()) {
+                        this.showConfirmModal(data);
+                    }
+                },
+
+                /**
+                 * Show confirmation modal sebelum redirect
+                 */
+                showConfirmModal: (url) => {
+                    state.pendingRedirectUrl = url;
+                    dom.modalMessage.textContent = `Arahkan ke: ${url}`;
+                    dom.confirmModal.classList.add('active');
+                },
+
+                /**
+                 * Confirm redirect
+                 */
+                confirmRedirect: () => {
+                    if (state.pendingRedirectUrl) {
+                        window.location.href = state.pendingRedirectUrl;
+                    }
+                    dom.confirmModal.classList.remove('active');
+                },
+
+                /**
+                 * Cancel redirect
+                 */
+                cancelRedirect: () => {
+                    state.pendingRedirectUrl = null;
+                    dom.confirmModal.classList.remove('active');
+                },
+
+                /**
+                 * Open hasil scanning
+                 */
+                openResult: () => {
+                    const data = state.lastScannedCode;
+                    if (dataTypeDetector.isUrl(data)) {
+                        window.open(data, '_blank');
+                    } else if (dataTypeDetector.isEmail(data)) {
+                        window.location.href = `mailto:${data}`;
+                    } else if (dataTypeDetector.isPhoneNumber(data)) {
+                        window.location.href = `tel:${data}`;
+                    }
+                },
+
+                /**
+                 * Copy hasil ke clipboard
+                 */
+                copyToClipboard: () => {
+                    const data = state.lastScannedCode;
+                    navigator.clipboard.writeText(data).then(() => {
+                        notifications.updateStatus('Disalin ke clipboard!', 'success');
+                        setTimeout(() => {
+                            notifications.updateStatus('Siap untuk memindai', 'success');
+                        }, 2000);
+                    });
+                },
+
+                /**
+                 * Reset scanner
+                 */
+                reset: () => {
+                    state.lastScannedCode = null;
+                    state.detectionHistory = [];
+                    dom.resultSection.classList.remove('active');
+                    notifications.updateStatus('Scanner direset', 'warning');
+                },
+
+                /**
+                 * Process uploaded image
+                 */
+                processImage: async (file) => {
+                    notifications.showLoading();
+                    notifications.updateStatus('Memproses gambar...', 'warning');
+
+                    return new Promise((resolve) => {
+                        const reader = new FileReader();
+
+                        reader.onload = (e) => {
+                            const img = new Image();
+
+                            img.onload = () => {
+                                const canvas = document.createElement('canvas');
+                                canvas.width = img.width;
+                                canvas.height = img.height;
+
+                                const context = canvas.getContext('2d');
+                                context.drawImage(img, 0, 0);
+
+                                let imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+                                imageData = imageProcessor.toGrayscale(imageData);
+                                imageData = imageProcessor.enhanceContrast(imageData, 1.8);
+
+                                const code = jsQR(imageData.data, imageData.width, imageData.height);
+
+                                notifications.hideLoading();
+
+                                if (code && code.data) {
+                                    this.handleDetection(code.data);
+                                    resolve(code.data);
+                                } else {
+                                    notifications.updateStatus('QR Code tidak ditemukan dalam gambar', 'error');
+                                    resolve(null);
+                                }
+                            };
+
+                            img.src = e.target.result;
+                        };
+
+                        reader.readAsDataURL(file);
+                    });
+                }
+            };
+        })();
+
+        // ============ Event Listeners ============
+        document.getElementById('fileInput').addEventListener('change', (e) => {
+            if (e.target.files && e.target.files[0]) {
+                qrScanner.processImage(e.target.files[0]);
+            }
+        });
+
+        // Update sensitivity value display
+        document.getElementById('sensitivitySlider').addEventListener('input', (e) => {
+            document.getElementById('sensitivityValue').textContent = e.target.value + '%';
+        });
+
+        // Update speed value display
+        document.getElementById('speedSlider').addEventListener('input', (e) => {
+            const speeds = ['Lambat', 'Normal', 'Cepat'];
+            document.getElementById('speedValue').textContent = speeds[e.target.value - 1];
+        });
+
+        // Initialize
+        console.log('Advanced QR Code Scanner ready');
+    </script>
+</body>
+</html>
