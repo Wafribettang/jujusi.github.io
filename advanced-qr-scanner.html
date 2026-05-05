@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Advanced QR Code Scanner</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jsQR/1.4.0/jsQR.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <title>QR Scanner Pro - Gallery Only</title>
     <style>
         * {
             margin: 0;
@@ -12,27 +12,66 @@
             box-sizing: border-box;
         }
 
+        :root {
+            --primary: #00f2fe;
+            --accent: #4facfe;
+            --secondary: #00d9ff;
+            --danger: #ff4d6d;
+            --success: #06ffa5;
+            --bg: #0f172a;
+            --bg-light: #1a1f3a;
+            --glass: rgba(255, 255, 255, 0.08);
+            --glass-hover: rgba(255, 255, 255, 0.12);
+            --text: #ffffff;
+            --text-muted: #a0aec0;
+        }
+
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', 'Inter', system-ui, -apple-system, sans-serif;
+            background: linear-gradient(135deg, var(--bg) 0%, #0a0f1f 100%);
+            color: var(--text);
             display: flex;
             justify-content: center;
             align-items: center;
-            padding: 20px;
+            min-height: 100vh;
+            overflow-x: hidden;
         }
 
-        .container {
-            background: white;
-            border-radius: 20px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-            overflow: hidden;
-            max-width: 600px;
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
             width: 100%;
-            animation: slideIn 0.5s ease-out;
+            height: 100%;
+            background: 
+                radial-gradient(circle at 20% 50%, rgba(0, 242, 254, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 80% 80%, rgba(79, 172, 254, 0.1) 0%, transparent 50%);
+            pointer-events: none;
+            z-index: 0;
         }
 
-        @keyframes slideIn {
+        .app-container {
+            position: relative;
+            z-index: 1;
+            width: 90%;
+            max-width: 480px;
+            background: var(--glass);
+            backdrop-filter: blur(35px);
+            -webkit-backdrop-filter: blur(35px);
+            border: 1px solid rgba(0, 242, 254, 0.2);
+            border-radius: 28px;
+            padding: 50px 28px;
+            text-align: center;
+            box-shadow: 
+                0 20px 60px -15px rgba(0, 0, 0, 0.6),
+                inset 0 1px 1px 0 rgba(255, 255, 255, 0.1);
+            animation: slideUp 0.6s ease-out;
+        }
+
+        @keyframes slideUp {
             from {
                 opacity: 0;
                 transform: translateY(30px);
@@ -43,1091 +82,387 @@
             }
         }
 
-        .header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 30px 20px;
-            text-align: center;
+        header {
+            margin-bottom: 35px;
         }
 
-        .header h1 {
+        header h1 {
+            margin: 0 0 8px 0;
             font-size: 28px;
-            margin-bottom: 8px;
             font-weight: 700;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            letter-spacing: -0.8px;
+            text-transform: uppercase;
+            tracking: 0.05em;
         }
 
-        .header p {
-            font-size: 14px;
-            opacity: 0.9;
+        header p {
+            font-size: 13px;
+            opacity: 0.65;
+            margin: 0;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            color: var(--text-muted);
         }
 
-        .content {
-            padding: 30px 20px;
-        }
-
-        .scanner-section {
-            margin-bottom: 30px;
-        }
-
-        .video-container {
+        .upload-zone {
+            border: 2px dashed rgba(0, 242, 254, 0.35);
+            border-radius: 22px;
+            padding: 45px 25px;
+            margin-bottom: 28px;
+            cursor: pointer;
+            transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+            background: linear-gradient(135deg, rgba(0, 242, 254, 0.05) 0%, rgba(79, 172, 254, 0.03) 100%);
             position: relative;
-            background: #000;
-            border-radius: 15px;
             overflow: hidden;
-            margin-bottom: 20px;
-            aspect-ratio: 1;
-            max-height: 400px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
         }
 
-        video {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            display: none;
-        }
-
-        video.active {
-            display: block;
-        }
-
-        canvas {
-            display: none;
-        }
-
-        .scan-overlay {
+        .upload-zone::before {
+            content: '';
             position: absolute;
             top: 0;
             left: 0;
-            width: 100%;
-            height: 100%;
-            border: 3px solid rgba(102, 126, 234, 0.5);
-            border-radius: 15px;
-            pointer-events: none;
-        }
-
-        .scan-line {
-            position: absolute;
-            width: 80%;
-            height: 2px;
-            background: linear-gradient(90deg, transparent, #667eea, transparent);
-            top: 50%;
-            left: 10%;
-            animation: scanMove 2s infinite;
-        }
-
-        @keyframes scanMove {
-            0%, 100% {
-                top: 20%;
-            }
-            50% {
-                top: 80%;
-            }
-        }
-
-        .corner-marker {
-            position: absolute;
-            width: 30px;
-            height: 30px;
-            border: 3px solid #667eea;
-        }
-
-        .corner-marker.top-left {
-            top: 0;
-            left: 0;
-            border-right: none;
-            border-bottom: none;
-        }
-
-        .corner-marker.top-right {
-            top: 0;
             right: 0;
-            border-left: none;
-            border-bottom: none;
-        }
-
-        .corner-marker.bottom-left {
             bottom: 0;
-            left: 0;
-            border-right: none;
-            border-top: none;
+            background: radial-gradient(circle at center, rgba(0, 242, 254, 0.1) 0%, transparent 70%);
+            opacity: 0;
+            transition: opacity 0.35s ease;
         }
 
-        .corner-marker.bottom-right {
-            bottom: 0;
-            right: 0;
-            border-left: none;
-            border-top: none;
+        .upload-zone:hover {
+            border-color: var(--primary);
+            background: linear-gradient(135deg, rgba(0, 242, 254, 0.12) 0%, rgba(79, 172, 254, 0.08) 100%);
+            transform: translateY(-3px);
+            box-shadow: 0 15px 35px -10px rgba(0, 242, 254, 0.3);
         }
 
-        .loading-spinner {
-            width: 50px;
-            height: 50px;
-            border: 4px solid rgba(102, 126, 234, 0.2);
-            border-top: 4px solid #667eea;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            display: none;
+        .upload-zone:hover::before {
+            opacity: 1;
         }
 
-        .loading-spinner.active {
-            display: block;
+        .icon-box {
+            font-size: 48px;
+            margin-bottom: 18px;
+            animation: float 3s ease-in-out infinite;
         }
 
-        @keyframes spin {
-            to {
-                transform: rotate(360deg);
-            }
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-8px); }
+        }
+
+        .upload-zone p {
+            margin: 8px 0;
+            font-size: 15px;
+            font-weight: 500;
+            color: var(--text);
+        }
+
+        .upload-zone p:last-child {
+            font-size: 12px;
+            opacity: 0.55;
+            color: var(--text-muted);
         }
 
         .button-group {
-            display: flex;
+            display: grid;
             gap: 12px;
-            margin-bottom: 20px;
-            flex-wrap: wrap;
         }
 
-        button {
-            flex: 1;
-            padding: 12px 20px;
+        .btn-gallery {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
             border: none;
-            border-radius: 10px;
-            font-size: 14px;
-            font-weight: 600;
+            padding: 16px 32px;
+            border-radius: 14px;
+            color: #0f172a;
+            font-weight: 700;
+            font-size: 16px;
             cursor: pointer;
-            transition: all 0.3s ease;
-            min-width: 120px;
-        }
-
-        .btn-primary {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-        }
-
-        .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
-        }
-
-        .btn-primary:active {
-            transform: translateY(0);
-        }
-
-        .btn-secondary {
-            background: #f0f0f0;
-            color: #333;
-        }
-
-        .btn-secondary:hover {
-            background: #e0e0e0;
-        }
-
-        .btn-danger {
-            background: #ff6b6b;
-            color: white;
-        }
-
-        .btn-danger:hover {
-            background: #ff5252;
-        }
-
-        .result-section {
-            background: #f8f9fa;
-            border-radius: 15px;
-            padding: 20px;
-            display: none;
-        }
-
-        .result-section.active {
-            display: block;
-            animation: slideIn 0.3s ease-out;
-        }
-
-        .result-label {
-            font-size: 12px;
-            color: #667eea;
-            font-weight: 600;
-            text-transform: uppercase;
-            margin-bottom: 8px;
-        }
-
-        .result-value {
-            font-size: 14px;
-            color: #333;
-            word-break: break-all;
-            font-family: 'Courier New', monospace;
-            background: white;
-            padding: 12px;
-            border-radius: 8px;
-            margin-bottom: 12px;
-        }
-
-        .result-actions {
-            display: flex;
-            gap: 10px;
-        }
-
-        .result-actions button {
-            flex: 1;
-        }
-
-        .status-indicator {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            padding: 8px 12px;
-            background: #e8f5e9;
-            color: #2e7d32;
-            border-radius: 20px;
-            font-size: 12px;
-            font-weight: 600;
-            margin-bottom: 15px;
-        }
-
-        .status-indicator.warning {
-            background: #fff3e0;
-            color: #e65100;
-        }
-
-        .status-indicator.error {
-            background: #ffebee;
-            color: #c62828;
-        }
-
-        .status-dot {
-            width: 8px;
-            height: 8px;
-            background: currentColor;
-            border-radius: 50%;
-            animation: pulse 2s infinite;
-        }
-
-        @keyframes pulse {
-            0%, 100% {
-                opacity: 1;
-            }
-            50% {
-                opacity: 0.5;
-            }
-        }
-
-        .settings-section {
-            background: #f8f9fa;
-            border-radius: 15px;
-            padding: 20px;
-            margin-bottom: 20px;
-        }
-
-        .setting-item {
-            margin-bottom: 15px;
-        }
-
-        .setting-item:last-child {
-            margin-bottom: 0;
-        }
-
-        .setting-label {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 8px;
-            font-size: 14px;
-            font-weight: 600;
-            color: #333;
-        }
-
-        .slider {
             width: 100%;
-            height: 6px;
-            border-radius: 3px;
-            background: #ddd;
-            outline: none;
-            -webkit-appearance: none;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 12px 24px -8px rgba(0, 242, 254, 0.4);
+            letter-spacing: 0.5px;
+            position: relative;
+            overflow: hidden;
         }
 
-        .slider::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            appearance: none;
-            width: 20px;
-            height: 20px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            cursor: pointer;
-            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
-        }
-
-        .slider::-moz-range-thumb {
-            width: 20px;
-            height: 20px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            cursor: pointer;
-            border: none;
-            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
-        }
-
-        .checkbox-group {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .checkbox-group input[type="checkbox"] {
-            width: 20px;
-            height: 20px;
-            cursor: pointer;
-            accent-color: #667eea;
-        }
-
-        .info-box {
-            background: #e3f2fd;
-            border-left: 4px solid #667eea;
-            padding: 12px;
-            border-radius: 8px;
-            font-size: 12px;
-            color: #1565c0;
-            margin-top: 15px;
-        }
-
-        @media (max-width: 600px) {
-            .container {
-                border-radius: 15px;
-            }
-
-            .header h1 {
-                font-size: 24px;
-            }
-
-            .content {
-                padding: 20px;
-            }
-
-            button {
-                font-size: 13px;
-                padding: 10px 15px;
-            }
-
-            .video-container {
-                max-height: 300px;
-            }
-        }
-
-        .modal {
-            display: none;
-            position: fixed;
+        .btn-gallery::before {
+            content: '';
+            position: absolute;
             top: 0;
-            left: 0;
+            left: -100%;
             width: 100%;
             height: 100%;
-            background: rgba(0, 0, 0, 0.7);
-            justify-content: center;
-            align-items: center;
-            z-index: 1000;
-            animation: fadeIn 0.3s ease-out;
+            background: rgba(255, 255, 255, 0.2);
+            transition: left 0.5s ease;
+            z-index: -1;
         }
 
-        .modal.active {
+        .btn-gallery:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 16px 32px -10px rgba(0, 242, 254, 0.5);
+        }
+
+        .btn-gallery:hover::before {
+            left: 100%;
+        }
+
+        .btn-gallery:active {
+            transform: scale(0.97);
+        }
+
+        .btn-copy {
+            background: linear-gradient(135deg, var(--success) 0%, #00d97a 100%);
+            border: none;
+            padding: 14px 28px;
+            border-radius: 12px;
+            color: #0f172a;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            width: 100%;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 10px 20px -8px rgba(6, 255, 165, 0.35);
+            letter-spacing: 0.5px;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn-copy.active {
             display: flex;
         }
 
-        @keyframes fadeIn {
+        .btn-copy:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 14px 28px -10px rgba(6, 255, 165, 0.45);
+        }
+
+        .btn-copy:active {
+            transform: scale(0.96);
+        }
+
+        .copy-icon {
+            font-size: 16px;
+        }
+
+        #result-status {
+            margin-top: 28px;
+            font-size: 13px;
+            min-height: 20px;
+            padding: 14px 16px;
+            border-radius: 12px;
+            background: var(--glass-hover);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.35s ease;
+            word-break: break-word;
+            max-height: 150px;
+            overflow-y: auto;
+        }
+
+        #result-status.success {
+            background: rgba(6, 255, 165, 0.1);
+            border-color: rgba(6, 255, 165, 0.3);
+            color: var(--success);
+        }
+
+        #result-status.error {
+            background: rgba(255, 77, 109, 0.1);
+            border-color: rgba(255, 77, 109, 0.3);
+            color: var(--danger);
+        }
+
+        #result-status.info {
+            background: rgba(0, 242, 254, 0.1);
+            border-color: rgba(0, 242, 254, 0.3);
+            color: var(--primary);
+        }
+
+        .copy-feedback {
+            position: fixed;
+            top: 30px;
+            right: 30px;
+            background: linear-gradient(135deg, var(--success) 0%, #00d97a 100%);
+            color: #0f172a;
+            padding: 14px 24px;
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 14px;
+            box-shadow: 0 12px 24px -8px rgba(6, 255, 165, 0.4);
+            animation: slideInRight 0.4s ease, slideOutRight 0.4s ease 2.6s forwards;
+            z-index: 1000;
+            letter-spacing: 0.5px;
+        }
+
+        @keyframes slideInRight {
             from {
                 opacity: 0;
+                transform: translateX(100px);
             }
             to {
                 opacity: 1;
+                transform: translateX(0);
             }
         }
 
-        .modal-content {
-            background: white;
-            padding: 30px;
-            border-radius: 20px;
-            max-width: 400px;
-            text-align: center;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-            animation: slideIn 0.3s ease-out;
+        @keyframes slideOutRight {
+            to {
+                opacity: 0;
+                transform: translateX(100px);
+            }
         }
 
-        .modal-content h2 {
-            color: #667eea;
-            margin-bottom: 12px;
-            font-size: 22px;
+        #reader {
+            display: none;
         }
 
-        .modal-content p {
-            color: #666;
-            margin-bottom: 20px;
-            font-size: 14px;
+        input[type="file"] {
+            display: none;
         }
 
-        .warning-icon {
-            font-size: 48px;
-            margin-bottom: 15px;
+        @media (max-width: 480px) {
+            .app-container {
+                padding: 40px 20px;
+                border-radius: 24px;
+            }
+
+            header h1 {
+                font-size: 24px;
+            }
+
+            .upload-zone {
+                padding: 35px 20px;
+                margin-bottom: 24px;
+            }
+
+            .icon-box {
+                font-size: 42px;
+            }
+
+            .copy-feedback {
+                right: 16px;
+                left: 16px;
+                top: 20px;
+            }
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <h1>🔍 Advanced QR Scanner</h1>
-            <p>Teknologi pemindaian QR tingkat lanjut dengan deteksi presisi</p>
+    <div class="app-container">
+        <header>
+            <h1>QR Scanner Pro</h1>
+            <p>Pemindai Galeri Presisi Tinggi</p>
+        </header>
+
+        <div class="upload-zone" id="drop-area">
+            <div class="icon-box">📱</div>
+            <p>Ketuk untuk memilih foto QR</p>
+            <p>Mendukung format JPG, PNG, WEBP</p>
         </div>
 
-        <div class="content">
-            <!-- Status Indicator -->
-            <div id="statusIndicator" class="status-indicator">
-                <span class="status-dot"></span>
-                <span id="statusText">Siap untuk memindai</span>
-            </div>
-
-            <!-- Settings Section -->
-            <div class="settings-section">
-                <div class="setting-item">
-                    <div class="setting-label">
-                        <span>Sensitivitas Deteksi</span>
-                        <span id="sensitivityValue">80%</span>
-                    </div>
-                    <input type="range" id="sensitivitySlider" min="30" max="100" value="80" class="slider">
-                </div>
-
-                <div class="setting-item">
-                    <div class="setting-label">
-                        <span>Kecepatan Pemrosesan</span>
-                        <span id="speedValue">Normal</span>
-                    </div>
-                    <input type="range" id="speedSlider" min="1" max="3" value="2" class="slider">
-                </div>
-
-                <div class="setting-item">
-                    <div class="checkbox-group">
-                        <input type="checkbox" id="autoRedirect" checked>
-                        <label for="autoRedirect">Auto-redirect untuk URL valid</label>
-                    </div>
-                </div>
-
-                <div class="setting-item">
-                    <div class="checkbox-group">
-                        <input type="checkbox" id="enableSound" checked>
-                        <label for="enableSound">Suara notifikasi</label>
-                    </div>
-                </div>
-
-                <div class="info-box">
-                    ℹ️ Posisikan kamera menghadap ke QR Code. Scanner otomatis mendeteksi kode dari berbagai ukuran.
-                </div>
-            </div>
-
-            <!-- Scanner Section -->
-            <div class="scanner-section">
-                <div class="video-container">
-                    <video id="video" playsinline></video>
-                    <canvas id="canvas"></canvas>
-                    <div class="loading-spinner" id="loadingSpinner"></div>
-                    <div class="scan-overlay">
-                        <div class="scan-line"></div>
-                        <div class="corner-marker top-left"></div>
-                        <div class="corner-marker top-right"></div>
-                        <div class="corner-marker bottom-left"></div>
-                        <div class="corner-marker bottom-right"></div>
-                    </div>
-                </div>
-
-                <!-- Buttons -->
-                <div class="button-group">
-                    <button class="btn-primary" id="startBtn" onclick="qrScanner.start()">
-                        ▶ Mulai Pemindaian
-                    </button>
-                    <button class="btn-secondary" id="stopBtn" onclick="qrScanner.stop()" style="display: none;">
-                        ⏹ Hentikan
-                    </button>
-                </div>
-
-                <div class="button-group">
-                    <button class="btn-secondary" id="uploadBtn" onclick="document.getElementById('fileInput').click()">
-                        📤 Unggah Gambar
-                    </button>
-                    <button class="btn-secondary" id="resetBtn" onclick="qrScanner.reset()">
-                        🔄 Reset
-                    </button>
-                </div>
-
-                <input type="file" id="fileInput" accept="image/*" style="display: none;">
-            </div>
-
-            <!-- Result Section -->
-            <div id="resultSection" class="result-section">
-                <div class="result-label">Hasil Pemindaian</div>
-                <div class="result-value" id="resultValue"></div>
-
-                <div class="result-label">Jenis Data</div>
-                <div class="result-value" id="dataType"></div>
-
-                <div class="result-actions">
-                    <button class="btn-primary" id="openBtn" onclick="qrScanner.openResult()">
-                        🔗 Buka
-                    </button>
-                    <button class="btn-secondary" id="copyBtn" onclick="qrScanner.copyToClipboard()">
-                        📋 Salin
-                    </button>
-                </div>
-            </div>
+        <input type="file" id="qr-input-file" accept="image/*">
+        
+        <div class="button-group">
+           <button id="btn-trigger" class="btn-gallery">📂 Buka Galeri</button>
+           <button id="btn-copy" class="btn-copy">
+        <i class="fa-regular fa-copy"></i> <span>Salin Hasil</span>
+    </button>
         </div>
+
+        <div id="result-status" class="info">Silakan pilih gambar dari galeri</div>
+        
+        <div id="reader"></div>
     </div>
 
-    <!-- Confirmation Modal -->
-    <div id="confirmModal" class="modal">
-        <div class="modal-content">
-            <div class="warning-icon">⚠️</div>
-            <h2>Konfirmasi Navigasi</h2>
-            <p id="modalMessage"></p>
-            <div class="button-group">
-                <button class="btn-primary" onclick="qrScanner.confirmRedirect()">Lanjutkan</button>
-                <button class="btn-secondary" onclick="qrScanner.cancelRedirect()">Batal</button>
-            </div>
-        </div>
-    </div>
-
+    <script src="https://unpkg.com/html5-qrcode"></script>
     <script>
-        /**
-         * Advanced QR Code Scanner Module
-         * Modul pemindai QR Code tingkat lanjut dengan deteksi presisi dan pemrosesan gambar canggih
-         */
-        const qrScanner = (() => {
-            // ============ State Management ============
-            const state = {
-                isScanning: false,
-                lastScannedCode: null,
-                pendingRedirectUrl: null,
-                videoStream: null,
-                processingFrame: false,
-                frameCount: 0,
-                detectionHistory: []
-            };
-
-            // ============ DOM Elements ============
-            const dom = {
-                video: document.getElementById('video'),
-                canvas: document.getElementById('canvas'),
-                startBtn: document.getElementById('startBtn'),
-                stopBtn: document.getElementById('stopBtn'),
-                resultSection: document.getElementById('resultSection'),
-                resultValue: document.getElementById('resultValue'),
-                dataType: document.getElementById('dataType'),
-                statusIndicator: document.getElementById('statusIndicator'),
-                statusText: document.getElementById('statusText'),
-                loadingSpinner: document.getElementById('loadingSpinner'),
-                fileInput: document.getElementById('fileInput'),
-                confirmModal: document.getElementById('confirmModal'),
-                modalMessage: document.getElementById('modalMessage')
-            };
-
-            // ============ Configuration ============
-            const config = {
-                getSensitivity: () => parseInt(document.getElementById('sensitivitySlider').value),
-                getSpeed: () => parseInt(document.getElementById('speedSlider').value),
-                getAutoRedirect: () => document.getElementById('autoRedirect').checked,
-                getEnableSound: () => document.getElementById('enableSound').checked,
-                getProcessingInterval: () => 3 - parseInt(document.getElementById('speedSlider').value) + 1
-            };
-
-            // ============ Image Processing Engine ============
-            const imageProcessor = {
-                /**
-                 * Mengekstraksi frame video dengan preprocessing tingkat tinggi
-                 */
-                extractFrame: (video, canvas) => {
-                    const context = canvas.getContext('2d', { willReadFrequently: true });
-                    canvas.width = video.videoWidth;
-                    canvas.height = video.videoHeight;
-                    context.drawImage(video, 0, 0);
-                    return context.getImageData(0, 0, canvas.width, canvas.height);
-                },
-
-                /**
-                 * Meningkatkan kontras gambar untuk deteksi QR yang lebih baik
-                 */
-                enhanceContrast: (imageData, factor = 1.5) => {
-                    const data = imageData.data;
-                    const intercept = 128 * (1 - factor);
-
-                    for (let i = 0; i < data.length; i += 4) {
-                        data[i] = data[i] * factor + intercept;
-                        data[i + 1] = data[i + 1] * factor + intercept;
-                        data[i + 2] = data[i + 2] * factor + intercept;
-                    }
-                    return imageData;
-                },
-
-                /**
-                 * Menerapkan Gaussian blur untuk noise reduction
-                 */
-                gaussianBlur: (imageData, radius = 1) => {
-                    const width = imageData.width;
-                    const height = imageData.height;
-                    const data = imageData.data;
-                    const output = new ImageData(width, height);
-                    const outData = output.data;
-
-                    const kernel = [1/9, 1/9, 1/9, 1/9, 1/9, 1/9, 1/9, 1/9, 1/9];
-
-                    for (let y = 1; y < height - 1; y++) {
-                        for (let x = 1; x < width - 1; x++) {
-                            let r = 0, g = 0, b = 0;
-
-                            for (let ky = -1; ky <= 1; ky++) {
-                                for (let kx = -1; kx <= 1; kx++) {
-                                    const idx = ((y + ky) * width + (x + kx)) * 4;
-                                    const kernelIdx = (ky + 1) * 3 + (kx + 1);
-                                    r += data[idx] * kernel[kernelIdx];
-                                    g += data[idx + 1] * kernel[kernelIdx];
-                                    b += data[idx + 2] * kernel[kernelIdx];
-                                }
-                            }
-
-                            const outIdx = (y * width + x) * 4;
-                            outData[outIdx] = r;
-                            outData[outIdx + 1] = g;
-                            outData[outIdx + 2] = b;
-                            outData[outIdx + 3] = 255;
-                        }
-                    }
-                    return output;
-                },
-
-                /**
-                 * Mengkonversi gambar ke grayscale untuk processing lebih cepat
-                 */
-                toGrayscale: (imageData) => {
-                    const data = imageData.data;
-                    for (let i = 0; i < data.length; i += 4) {
-                        const gray = data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114;
-                        data[i] = gray;
-                        data[i + 1] = gray;
-                        data[i + 2] = gray;
-                    }
-                    return imageData;
-                },
-
-                /**
-                 * Adaptive thresholding untuk berbagai kondisi pencahayaan
-                 */
-                adaptiveThreshold: (imageData, blockSize = 11) => {
-                    const width = imageData.width;
-                    const height = imageData.height;
-                    const data = imageData.data;
-                    const output = new Uint8ClampedArray(width * height);
-
-                    const half = Math.floor(blockSize / 2);
-
-                    for (let y = 0; y < height; y++) {
-                        for (let x = 0; x < width; x++) {
-                            let sum = 0;
-                            let count = 0;
-
-                            for (let by = -half; by <= half; by++) {
-                                for (let bx = -half; bx <= half; bx++) {
-                                    const yy = Math.max(0, Math.min(height - 1, y + by));
-                                    const xx = Math.max(0, Math.min(width - 1, x + bx));
-                                    const idx = (yy * width + xx) * 4;
-                                    sum += data[idx];
-                                    count++;
-                                }
-                            }
-
-                            const mean = sum / count;
-                            const currentIdx = (y * width + x) * 4;
-                            output[y * width + x] = data[currentIdx] > mean ? 255 : 0;
-                        }
-                    }
-
-                    return output;
-                }
-            };
-
-            // ============ QR Detection Engine ============
-            const detectionEngine = {
-                /**
-                 * Memproses frame dengan preprocessing otomatis
-                 */
-                processFrame: (video) => {
-                    if (state.processingFrame) return null;
-
-                    state.processingFrame = true;
-                    const sensitivity = config.getSensitivity();
-
-                    try {
-                        // Ekstraksi frame
-                        let imageData = imageProcessor.extractFrame(video, dom.canvas);
-
-                        // Konversi ke grayscale
-                        imageData = imageProcessor.toGrayscale(imageData);
-
-                        // Blur untuk noise reduction
-                        imageData = imageProcessor.gaussianBlur(imageData, 1);
-
-                        // Peningkatan kontras berdasarkan sensitivitas
-                        const contrastFactor = 1 + (sensitivity / 100) * 0.5;
-                        imageData = imageProcessor.enhanceContrast(imageData, contrastFactor);
-
-                        // Deteksi QR Code
-                        const code = jsQR(imageData.data, imageData.width, imageData.height);
-
-                        state.processingFrame = false;
-                        return code;
-                    } catch (e) {
-                        console.error('Frame processing error:', e);
-                        state.processingFrame = false;
-                        return null;
-                    }
-                },
-
-                /**
-                 * Validasi deteksi dengan history untuk akurasi lebih tinggi
-                 */
-                validateDetection: (code) => {
-                    if (!code || !code.data) return false;
-
-                    // Simpan deteksi dalam history
-                    state.detectionHistory.push(code.data);
-                    if (state.detectionHistory.length > 10) {
-                        state.detectionHistory.shift();
-                    }
-
-                    // Jika setidaknya 3 deteksi terakhir sama, validasi
-                    if (state.detectionHistory.length >= 3) {
-                        const lastThree = state.detectionHistory.slice(-3);
-                        return lastThree[0] === lastThree[1] && lastThree[1] === lastThree[2];
-                    }
-
-                    return false;
-                }
-            };
-
-            // ============ Data Type Detection ============
-            const dataTypeDetector = {
-                /**
-                 * Mendeteksi jenis data dari hasil QR scan
-                 */
-                detect: (data) => {
-                    if (!data) return 'Unknown';
-
-                    // Check URL
-                    if (this.isUrl(data)) return 'URL';
-
-                    // Check Email
-                    if (this.isEmail(data)) return 'Email';
-
-                    // Check Phone
-                    if (this.isPhoneNumber(data)) return 'Nomor Telepon';
-
-                    // Check WiFi
-                    if (data.includes('WIFI:')) return 'WiFi';
-
-                    // Check vCard
-                    if (data.includes('BEGIN:VCARD')) return 'Kontak vCard';
-
-                    // Check Location
-                    if (data.includes('geo:')) return 'Lokasi';
-
-                    return 'Teks Biasa';
-                },
-
-                isUrl: (data) => {
-                    try {
-                        new URL(data);
-                        return true;
-                    } catch {
-                        return false;
-                    }
-                },
-
-                isEmail: (data) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data),
-
-                isPhoneNumber: (data) => /^[\d\s\-\+\(\)]{7,}$/.test(data)
-            };
-
-            // ============ User Notifications ============
-            const notifications = {
-                /**
-                 * Mainkan suara notifikasi
-                 */
-                playSound: () => {
-                    if (!config.getEnableSound()) return;
-
-                    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                    const oscillator = audioContext.createOscillator();
-                    const gainNode = audioContext.createGain();
-
-                    oscillator.connect(gainNode);
-                    gainNode.connect(audioContext.destination);
-
-                    oscillator.frequency.value = 800;
-                    oscillator.type = 'sine';
-
-                    gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
-                    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
-
-                    oscillator.start(audioContext.currentTime);
-                    oscillator.stop(audioContext.currentTime + 0.1);
-                },
-
-                /**
-                 * Update status indicator
-                 */
-                updateStatus: (text, type = 'success') => {
-                    dom.statusText.textContent = text;
-                    dom.statusIndicator.className = `status-indicator ${type}`;
-                },
-
-                /**
-                 * Show loading state
-                 */
-                showLoading: () => {
-                    dom.loadingSpinner.classList.add('active');
-                },
-
-                /**
-                 * Hide loading state
-                 */
-                hideLoading: () => {
-                    dom.loadingSpinner.classList.remove('active');
-                }
-            };
-
-            // ============ Public API ============
-            return {
-                /**
-                 * Memulai pemindaian QR Code
-                 */
-                start: async () => {
-                    if (state.isScanning) return;
-
-                    notifications.updateStatus('Mengakses kamera...', 'warning');
-                    notifications.showLoading();
-
-                    try {
-                        const stream = await navigator.mediaDevices.getUserMedia({
-                            video: {
-                                facingMode: 'environment',
-                                width: { ideal: 1280 },
-                                height: { ideal: 720 }
-                            }
-                        });
-
-                        state.videoStream = stream;
-                        dom.video.srcObject = stream;
-                        dom.video.classList.add('active');
-
-                        state.isScanning = true;
-                        dom.startBtn.style.display = 'none';
-                        dom.stopBtn.style.display = 'flex';
-
-                        notifications.updateStatus('Pemindaian aktif - Arahkan kamera ke QR Code', 'success');
-                        notifications.hideLoading();
-
-                        this.scanFrame();
-                    } catch (error) {
-                        notifications.updateStatus('Akses kamera ditolak', 'error');
-                        notifications.hideLoading();
-                        console.error('Camera access error:', error);
-                    }
-                },
-
-                /**
-                 * Menghentikan pemindaian
-                 */
-                stop: () => {
-                    state.isScanning = false;
-
-                    if (state.videoStream) {
-                        state.videoStream.getTracks().forEach(track => track.stop());
-                        state.videoStream = null;
-                    }
-
-                    dom.video.classList.remove('active');
-                    dom.startBtn.style.display = 'flex';
-                    dom.stopBtn.style.display = 'none';
-
-                    notifications.updateStatus('Pemindaian dihentikan', 'warning');
-                },
-
-                /**
-                 * Scan frame video secara kontinyu
-                 */
-                scanFrame: () => {
-                    if (!state.isScanning) return;
-
-                    state.frameCount++;
-                    const processingInterval = config.getProcessingInterval();
-
-                    // Process every N frames based on speed setting
-                    if (state.frameCount % processingInterval === 0) {
-                        const code = detectionEngine.processFrame(dom.video);
-
-                        if (code && detectionEngine.validateDetection(code)) {
-                            if (code.data !== state.lastScannedCode) {
-                                state.lastScannedCode = code.data;
-                                this.handleDetection(code.data);
-                            }
-                        }
-                    }
-
-                    requestAnimationFrame(() => this.scanFrame());
-                },
-
-                /**
-                 * Handle hasil deteksi QR Code
-                 */
-                handleDetection: (data) => {
-                    notifications.playSound();
-                    notifications.updateStatus('QR Code terdeteksi!', 'success');
-
-                    dom.resultValue.textContent = data;
-                    const type = dataTypeDetector.detect(data);
-                    dom.dataType.textContent = type;
-
-                    dom.resultSection.classList.add('active');
-
-                    // Auto redirect jika URL dan setting enabled
-                    if (type === 'URL' && config.getAutoRedirect()) {
-                        this.showConfirmModal(data);
-                    }
-                },
-
-                /**
-                 * Show confirmation modal sebelum redirect
-                 */
-                showConfirmModal: (url) => {
-                    state.pendingRedirectUrl = url;
-                    dom.modalMessage.textContent = `Arahkan ke: ${url}`;
-                    dom.confirmModal.classList.add('active');
-                },
-
-                /**
-                 * Confirm redirect
-                 */
-                confirmRedirect: () => {
-                    if (state.pendingRedirectUrl) {
-                        window.location.href = state.pendingRedirectUrl;
-                    }
-                    dom.confirmModal.classList.remove('active');
-                },
-
-                /**
-                 * Cancel redirect
-                 */
-                cancelRedirect: () => {
-                    state.pendingRedirectUrl = null;
-                    dom.confirmModal.classList.remove('active');
-                },
-
-                /**
-                 * Open hasil scanning
-                 */
-                openResult: () => {
-                    const data = state.lastScannedCode;
-                    if (dataTypeDetector.isUrl(data)) {
-                        window.open(data, '_blank');
-                    } else if (dataTypeDetector.isEmail(data)) {
-                        window.location.href = `mailto:${data}`;
-                    } else if (dataTypeDetector.isPhoneNumber(data)) {
-                        window.location.href = `tel:${data}`;
-                    }
-                },
-
-                /**
-                 * Copy hasil ke clipboard
-                 */
-                copyToClipboard: () => {
-                    const data = state.lastScannedCode;
-                    navigator.clipboard.writeText(data).then(() => {
-                        notifications.updateStatus('Disalin ke clipboard!', 'success');
-                        setTimeout(() => {
-                            notifications.updateStatus('Siap untuk memindai', 'success');
-                        }, 2000);
-                    });
-                },
-
-                /**
-                 * Reset scanner
-                 */
-                reset: () => {
-                    state.lastScannedCode = null;
-                    state.detectionHistory = [];
-                    dom.resultSection.classList.remove('active');
-                    notifications.updateStatus('Scanner direset', 'warning');
-                },
-
-                /**
-                 * Process uploaded image
-                 */
-                processImage: async (file) => {
-                    notifications.showLoading();
-                    notifications.updateStatus('Memproses gambar...', 'warning');
-
-                    return new Promise((resolve) => {
-                        const reader = new FileReader();
-
-                        reader.onload = (e) => {
-                            const img = new Image();
-
-                            img.onload = () => {
-                                const canvas = document.createElement('canvas');
-                                canvas.width = img.width;
-                                canvas.height = img.height;
-
-                                const context = canvas.getContext('2d');
-                                context.drawImage(img, 0, 0);
-
-                                let imageData = context.getImageData(0, 0, canvas.width, canvas.height);
-                                imageData = imageProcessor.toGrayscale(imageData);
-                                imageData = imageProcessor.enhanceContrast(imageData, 1.8);
-
-                                const code = jsQR(imageData.data, imageData.width, imageData.height);
-
-                                notifications.hideLoading();
-
-                                if (code && code.data) {
-                                    this.handleDetection(code.data);
-                                    resolve(code.data);
-                                } else {
-                                    notifications.updateStatus('QR Code tidak ditemukan dalam gambar', 'error');
-                                    resolve(null);
-                                }
-                            };
-
-                            img.src = e.target.result;
-                        };
-
-                        reader.readAsDataURL(file);
-                    });
-                }
-            };
-        })();
-
-        // ============ Event Listeners ============
-        document.getElementById('fileInput').addEventListener('change', (e) => {
-            if (e.target.files && e.target.files[0]) {
-                qrScanner.processImage(e.target.files[0]);
+        const fileInput = document.getElementById('qr-input-file');
+        const triggerBtn = document.getElementById('btn-trigger');
+        const copyBtn = document.getElementById('btn-copy');
+        const dropArea = document.getElementById('drop-area');
+        const statusDisplay = document.getElementById('result-status');
+        
+        const html5QrCode = new Html5Qrcode("reader");
+        
+        let currentResult = null;
+
+        const handleSuccess = (decodedText) => {
+            currentResult = decodedText;
+            statusDisplay.classList.remove('info', 'error');
+            statusDisplay.classList.add('success');
+            
+            try {
+                const url = new URL(decodedText);
+                statusDisplay.innerText = "✓ QR Terdeteksi! URL Valid - Mengalihkan...";
+                copyBtn.classList.remove('active');
+                
+                setTimeout(() => {
+                    window.location.href = url.href;
+                }, 1500);
+            } catch (e) {
+                // Bukan URL, tampilkan sebagai text
+                statusDisplay.innerText = `✓ Text: ${decodedText}`;
+                copyBtn.classList.add('active');
+            }
+        };
+
+        const processFile = (file) => {
+            if (!file) return;
+
+            statusDisplay.classList.remove('success', 'error');
+            statusDisplay.classList.add('info');
+            statusDisplay.innerText = "⏳ Memproses gambar...";
+            copyBtn.classList.remove('active');
+
+            html5QrCode.scanFile(file, true)
+                .then(decodedText => {
+                    handleSuccess(decodedText);
+                })
+                .catch(err => {
+                    statusDisplay.classList.remove('info');
+                    statusDisplay.classList.add('error');
+                    statusDisplay.innerText = "✗ Gagal mendeteksi QR. Pastikan gambar tajam dan jelas.";
+                    copyBtn.classList.remove('active');
+                });
+        };
+
+        const showCopyFeedback = () => {
+            const feedback = document.createElement('div');
+            feedback.className = 'copy-feedback';
+            feedback.textContent = '✓ Teks disalin ke clipboard';
+            document.body.appendChild(feedback);
+            
+            setTimeout(() => {
+                feedback.remove();
+            }, 3000);
+        };
+
+        triggerBtn.addEventListener('click', () => {
+            fileInput.click();
+        });
+
+        dropArea.addEventListener('click', () => {
+            fileInput.click();
+        });
+
+        copyBtn.addEventListener('click', () => {
+            if (currentResult) {
+                navigator.clipboard.writeText(currentResult).then(() => {
+                    showCopyFeedback();
+                }).catch(() => {
+                    alert('Gagal menyalin ke clipboard');
+                });
             }
         });
 
-        // Update sensitivity value display
-        document.getElementById('sensitivitySlider').addEventListener('input', (e) => {
-            document.getElementById('sensitivityValue').textContent = e.target.value + '%';
+        fileInput.addEventListener('change', e => {
+            const file = e.target.files[0];
+            processFile(file);
         });
-
-        // Update speed value display
-        document.getElementById('speedSlider').addEventListener('input', (e) => {
-            const speeds = ['Lambat', 'Normal', 'Cepat'];
-            document.getElementById('speedValue').textContent = speeds[e.target.value - 1];
-        });
-
-        // Initialize
-        console.log('Advanced QR Code Scanner ready');
     </script>
 </body>
 </html>
